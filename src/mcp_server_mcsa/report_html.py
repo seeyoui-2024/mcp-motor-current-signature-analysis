@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
-from mcp_server_mcsa.i18n import t
+from mcp_server_mcsa.i18n import t, _TRANSLATIONS
 from mcp_server_mcsa.report import (
     _FAULT_KEYS,
     _fault_label,
@@ -15,6 +16,18 @@ from mcp_server_mcsa.report import (
     _severity_label,
     _translate_assessment,
 )
+
+
+def _build_i18n_js() -> str:
+    """Build the window._i18n JavaScript dictionary for client-side language switching."""
+    i18n_dict = {}
+    for lang_code in ["en", "zh-CN"]:
+        for key, value in _TRANSLATIONS.get(lang_code, {}).items():
+            if key not in i18n_dict:
+                i18n_dict[key] = {}
+            i18n_dict[key][lang_code] = value
+    json_str = json.dumps(i18n_dict, ensure_ascii=False)
+    return f"window._i18n = {json_str};"
 
 
 def _generate_html_report(data: dict[str, Any], lang: str) -> str:
@@ -36,6 +49,7 @@ def _generate_html_report(data: dict[str, Any], lang: str) -> str:
     fault_cards = _build_fault_cards(fault_analysis, lang)
     env_rows = _build_env_rows(envelope_stats, lang)
     band_rows = _build_band_rows(band_energy, lang)
+    i18n_js = _build_i18n_js()
 
     overall = summary.get("overall_assessment", "")
     overall = _translate_assessment(overall, lang)
@@ -158,6 +172,7 @@ def _generate_html_report(data: dict[str, Any], lang: str) -> str:
   </div>
 
   <script>
+    {i18n_js}
     function switchLang(lang) {{
       document.documentElement.lang = lang;
       document.querySelectorAll('[data-i18n]').forEach(el => {{

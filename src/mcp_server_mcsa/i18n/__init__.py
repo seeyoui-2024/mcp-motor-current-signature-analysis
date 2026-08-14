@@ -1,3 +1,3 @@
-from .translations import SUPPORTED_LANGUAGES, t
+from .translations import SUPPORTED_LANGUAGES, t, _TRANSLATIONS
 
-__all__ = ["SUPPORTED_LANGUAGES", "t"]
+__all__ = ["SUPPORTED_LANGUAGES", "t", "_TRANSLATIONS"]
