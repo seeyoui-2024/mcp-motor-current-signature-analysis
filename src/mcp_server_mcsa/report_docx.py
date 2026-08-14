@@ -47,8 +47,7 @@ def _generate_docx_report(data: dict[str, Any], lang: str) -> tuple[bytes | None
     _add_band_section(doc, band_energy, lang)
 
     overall = summary.get("overall_assessment", "")
-    if lang == "zh-CN":
-        overall = _translate_assessment(overall, lang)
+    overall = _translate_assessment(overall, lang)
     doc.add_heading(t("report.title.overall_assessment", lang), level=1)
     doc.add_paragraph(overall)
 

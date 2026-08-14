@@ -1044,11 +1044,18 @@ def run_full_diagnosis(
         },
     }
 
+    # Store diagnosis result in cache for later report generation
+    if signal_id:
+        _cache[f"diag_{signal_id}"] = {
+            "_type": "diagnosis",
+            "diagnosis": report,
+        }
+
     return json.dumps(report, indent=2, default=str)
 
 
 def _overall_assessment(brb: dict, ecc: dict, stator: dict, env_stats: dict) -> str:
-    """Generate a brief overall assessment string."""
+    """Generate a brief overall assessment string (English, used as base for translation)."""
     severities = [brb["severity"], ecc["severity"], stator["severity"]]
 
     if "severe" in severities:
@@ -1060,6 +1067,23 @@ def _overall_assessment(brb: dict, ecc: dict, stator: dict, env_stats: dict) -> 
     if env_stats["kurtosis"] > 6.0:
         return "WATCH — Elevated envelope kurtosis may indicate mechanical impulsiveness."
     return "NORMAL — No significant fault indicators detected."
+
+
+_ASSESSMENT_KEY_MAP = {
+    "CRITICAL": "assessment.critical",
+    "WARNING": "assessment.warning",
+    "WATCH": "assessment.watch_incipient",
+    "NORMAL": "assessment.normal",
+}
+
+
+def _assessment_key(text: str) -> str:
+    """Map an overall assessment text to its translation key."""
+    upper = text.upper()
+    for prefix, key in _ASSESSMENT_KEY_MAP.items():
+        if upper.startswith(prefix):
+            return key
+    return "assessment.normal"
 
 
 # ===================================================================
@@ -1165,6 +1189,13 @@ def diagnose_from_file(
         },
     }
 
+    # Store diagnosis result in cache for later report generation
+    if sig_id:
+        _cache[f"diag_{sig_id}"] = {
+            "_type": "diagnosis",
+            "diagnosis": report,
+        }
+
     return json.dumps(report, indent=2, default=str)
 
 
@@ -1188,10 +1219,16 @@ def generate_report(
     if report_data is not None:
         data = json.loads(report_data) if isinstance(report_data, str) else report_data
     elif signal_id is not None:
-        entry = _resolve_entry(signal_id)
-        data = {
-            "signal_info": _signal_summary(entry["signal"], entry["sampling_freq_hz"]),
-        }
+        # First, check for cached full diagnosis result
+        diag_key = f"diag_{signal_id}"
+        if diag_key in _cache:
+            data = _cache[diag_key]["diagnosis"]
+        else:
+            # Fall back to basic signal info
+            entry = _resolve_entry(signal_id)
+            data = {
+                "signal_info": _signal_summary(entry["signal"], entry["sampling_freq_hz"]),
+            }
     else:
         return json.dumps({"error": "Provide either signal_id or report_data"})
 
@@ -1267,6 +1304,8 @@ def clear_stored_data(
             path.unlink()
             removed = True
         _cache.pop(data_id, None)
+        # Also remove associated diagnosis cache entry
+        _cache.pop(f"diag_{data_id}", None)
         if removed:
             return json.dumps({"cleared": data_id, "remaining": len(_list_all_stored_ids())})
         return json.dumps({"error": f"ID '{data_id}' not found in store."})

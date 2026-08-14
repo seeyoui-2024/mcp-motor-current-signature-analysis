@@ -38,8 +38,7 @@ def _generate_html_report(data: dict[str, Any], lang: str) -> str:
     band_rows = _build_band_rows(band_energy, lang)
 
     overall = summary.get("overall_assessment", "")
-    if lang == "zh-CN":
-        overall = _translate_assessment(overall, lang)
+    overall = _translate_assessment(overall, lang)
 
     recs = _get_recommendations(summary, lang)
     recs_html = "\n".join(f'        <li>{r}</li>' for r in recs)

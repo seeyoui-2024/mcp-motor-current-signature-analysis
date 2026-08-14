@@ -74,23 +74,22 @@ def _overall_class(overall: str) -> str:
 
 
 def _translate_assessment(text: str, lang: str) -> str:
-    if lang != "zh-CN":
+    """Translate overall assessment text to the target language using i18n system."""
+    if not text:
         return text
-    _MAP = {
-        "CRITICAL": "危急",
-        "WATCH": "观察",
-        "WARNING": "警告",
-        "NORMAL": "正常",
-        "One or more fault indicators at severe level. Immediate inspection recommended.": "一个或多个故障指标处于严重级别，建议立即检查。",
-        "Moderate fault indication detected. Schedule inspection.": "检测到中等故障迹象，建议安排检查。",
-        "Incipient fault signatures detected. Increase monitoring frequency.": "检测到初期故障特征，建议提高监测频率。",
-        "Elevated envelope kurtosis may indicate mechanical impulsiveness.": "包络峰度升高可能表示机械冲击。",
-        "No significant fault indicators detected.": "未检测到明显故障指标。",
+    # Try to map text to a translation key
+    upper = text.upper()
+    _KEY_MAP = {
+        "CRITICAL": "assessment.critical",
+        "WARNING": "assessment.warning",
+        "WATCH": "assessment.watch_incipient",
+        "NORMAL": "assessment.normal",
     }
-    result = text
-    for en, zh in _MAP.items():
-        result = result.replace(en, zh)
-    return result
+    for prefix, key in _KEY_MAP.items():
+        if upper.startswith(prefix):
+            return t(key, lang)
+    # Fallback: return original text
+    return text
 
 
 def _get_recommendations(summary: dict, lang: str) -> list[str]:

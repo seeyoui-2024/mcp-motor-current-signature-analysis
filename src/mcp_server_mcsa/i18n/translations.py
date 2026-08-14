@@ -91,6 +91,12 @@ _TRANSLATIONS = {
         "doc.value": "Value",
         "doc.overall_assessment": "Overall Assessment",
         "doc.recommendations": "Recommendations",
+
+        "assessment.critical": "CRITICAL — One or more fault indicators at severe level. Immediate inspection recommended.",
+        "assessment.warning": "WARNING — Moderate fault indication detected. Schedule inspection.",
+        "assessment.watch_incipient": "WATCH — Incipient fault signatures detected. Increase monitoring frequency.",
+        "assessment.watch_kurtosis": "WATCH — Elevated envelope kurtosis may indicate mechanical impulsiveness.",
+        "assessment.normal": "NORMAL — No significant fault indicators detected.",
     },
 
     "zh-CN": {
@@ -183,6 +189,12 @@ _TRANSLATIONS = {
         "doc.value": "数值",
         "doc.overall_assessment": "综合评估",
         "doc.recommendations": "建议措施",
+
+        "assessment.critical": "危急 — 一个或多个故障指标处于严重级别，建议立即检查。",
+        "assessment.warning": "警告 — 检测到中等故障迹象，建议安排检查。",
+        "assessment.watch_incipient": "观察 — 检测到初期故障特征，建议提高监测频率。",
+        "assessment.watch_kurtosis": "观察 — 包络峰度升高可能表示机械冲击，建议加强监测。",
+        "assessment.normal": "正常 — 未检测到明显故障指标。",
     }
 }
 
