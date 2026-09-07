@@ -53,6 +53,12 @@ from mcp_server_mcsa.analysis.timefreq import (
     compute_stft,
     track_frequency_over_time,
 )
+from mcp_server_mcsa.i18n import (
+    Language,
+    get_assessment_text,
+    get_resource_text,
+    get_severity_label,
+)
 
 # ---------------------------------------------------------------------------
 # Server instance
@@ -302,48 +308,58 @@ def _spectrum_summary(freqs: np.ndarray, amps: np.ndarray) -> dict:
 # RESOURCE: Fault Signatures Reference
 # ===================================================================
 
-FAULT_SIGNATURES_REFERENCE = """# MCSA Fault Signature Reference
+def _build_fault_signatures_reference(lang: Language) -> str:
+    """Build the fault signatures reference text in the specified language."""
 
-## Broken Rotor Bars (BRB)
-- **Signature**: Sidebands at (1 ± 2s)·f_s around the supply fundamental
-- **Index**: dB ratio of sideband amplitude to fundamental
-- **Thresholds** (dB below fundamental):
-  - Healthy: ≤ -50 dB
-  - Incipient: -50 to -45 dB
-  - Moderate: -45 to -40 dB
-  - Severe: > -35 dB
-- **Notes**: More visible at medium–high load; higher harmonics at (1 ± 2ks)·f_s
+    def t(key: str) -> str:
+        return get_resource_text(key, lang)
 
-## Eccentricity (Static / Dynamic)
-- **Signature**: Sidebands at f_s ± k·f_r (rotor frequency multiples)
-- **Static eccentricity**: produces components at f_s ± f_r
-- **Dynamic eccentricity**: produces components at f_s ± k·f_r, varying with load
-- **Mixed eccentricity**: components at n·f_r (pure rotational harmonics)
+    return f"""# {t("resource.title")}
 
-## Stator Inter-Turn Short Circuit
-- **Signature**: Sidebands at f_s ± 2k·f_r
-- **Notes**: May also increase negative-sequence current component;
-  distinguish from supply unbalance by checking load dependency
+## {t("resource.brb.title")}
+- **{t("resource.brb.signature")}**
+- **{t("resource.brb.index")}**
+- **{t("resource.brb.thresholds")}**
+  - {t("resource.brb.healthy")}
+  - {t("resource.brb.incipient")}
+  - {t("resource.brb.moderate")}
+  - {t("resource.brb.severe")}
+- **Notes**: {t("resource.brb.notes")}
 
-## Bearing Defects
-- **Signature**: Sidebands at f_s ± k·f_defect where f_defect is BPFO/BPFI/BSF/FTF
+## {t("resource.ecc.title")}
+- **{t("resource.ecc.signature")}**
+- {t("resource.ecc.static")}
+- {t("resource.ecc.dynamic")}
+- {t("resource.ecc.mixed")}
+
+## {t("resource.stator.title")}
+- **{t("resource.stator.signature")}**
+- **Notes**: {t("resource.stator.notes")}
+
+## {t("resource.bearing.title")}
+- **{t("resource.bearing.signature")}**
 - **Defect frequencies** (normalised to shaft speed):
-  - BPFO = (n/2)·(1 - d/D·cos α)
-  - BPFI = (n/2)·(1 + d/D·cos α)
-  - BSF  = (D/2d)·(1 - (d/D·cos α)²)
-  - FTF  = (1/2)·(1 - d/D·cos α)
-- **Notes**: Weak in stator current; confirm with envelope analysis or vibration data
+  - {t("resource.bearing.bpfo")}
+  - {t("resource.bearing.bpfi")}
+  - {t("resource.bearing.bsf")}
+  - {t("resource.bearing.ftf")}
+- **Notes**: {t("resource.bearing.notes")}
 
-## Load Faults (Cavitation, Misalignment)
-- **Signature**: Broadband energy increase around f_s ("foot" pattern in PSD)
-- **Index**: Band energy integration around the supply frequency
-"""
+## {t("resource.load.title")}
+- **{t("resource.load.signature")}**
+- **Index**: {t("resource.load.index")}"""
 
 
 @mcp.resource("mcsa://fault-signatures")
 def fault_signatures_resource() -> str:
-    """Reference table of MCSA fault signatures, frequencies, and empirical thresholds."""
-    return FAULT_SIGNATURES_REFERENCE
+    """Reference table of MCSA fault signatures, frequencies, and empirical thresholds (English)."""
+    return _build_fault_signatures_reference("en")
+
+
+@mcp.resource("mcsa://fault-signatures/zh")
+def fault_signatures_resource_zh() -> str:
+    """Reference table of MCSA fault signatures, frequencies, and empirical thresholds (Chinese)."""
+    return _build_fault_signatures_reference("zh")
 
 
 # ===================================================================
@@ -605,6 +621,7 @@ def detect_broken_rotor_bars(
     poles: Annotated[int, Field(description="Number of poles")] = 4,
     rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
     tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
 ) -> str:
     """Detect broken rotor bar faults from current spectrum.
 
@@ -615,7 +632,7 @@ def detect_broken_rotor_bars(
     params = calculate_motor_parameters(supply_freq_hz, poles, rotor_speed_rpm)
     freqs, amps = _get_spectrum(spectrum_id, frequencies_hz, amplitudes)
 
-    result = brb_fault_index(freqs, amps, params, tolerance_hz)
+    result = brb_fault_index(freqs, amps, params, tolerance_hz, language=language)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -633,6 +650,7 @@ def detect_eccentricity(
     rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
     harmonics: Annotated[int, Field(description="Number of harmonic orders to check", default=3)] = 3,
     tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
 ) -> str:
     """Detect air-gap eccentricity faults from current spectrum.
 
@@ -642,7 +660,7 @@ def detect_eccentricity(
     params = calculate_motor_parameters(supply_freq_hz, poles, rotor_speed_rpm)
     freqs, amps = _get_spectrum(spectrum_id, frequencies_hz, amplitudes)
 
-    result = eccentricity_fault_index(freqs, amps, params, harmonics, tolerance_hz)
+    result = eccentricity_fault_index(freqs, amps, params, harmonics, tolerance_hz, language=language)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -660,6 +678,7 @@ def detect_stator_faults(
     rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
     harmonics: Annotated[int, Field(description="Number of harmonic orders", default=3)] = 3,
     tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
 ) -> str:
     """Detect stator inter-turn short circuit faults from current spectrum.
 
@@ -668,7 +687,7 @@ def detect_stator_faults(
     params = calculate_motor_parameters(supply_freq_hz, poles, rotor_speed_rpm)
     freqs, amps = _get_spectrum(spectrum_id, frequencies_hz, amplitudes)
 
-    result = stator_fault_index(freqs, amps, params, harmonics, tolerance_hz)
+    result = stator_fault_index(freqs, amps, params, harmonics, tolerance_hz, language=language)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -686,6 +705,7 @@ def detect_bearing_faults(
     defect_type: Annotated[str, Field(description="Defect type label: bpfo, bpfi, bsf, or ftf", default="bpfo")] = "bpfo",
     harmonics: Annotated[int, Field(description="Number of sideband orders", default=2)] = 2,
     tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
 ) -> str:
     """Detect bearing defect signatures in the stator-current spectrum.
 
@@ -698,6 +718,7 @@ def detect_bearing_faults(
     result = bearing_fault_index(
         freqs, amps, supply_freq_hz,
         bearing_defect_freq_hz, defect_type, harmonics, tolerance_hz,
+        language=language,
     )
     return json.dumps(result, indent=2, default=str)
 
@@ -957,45 +978,39 @@ def generate_test_current_signal(
     }, indent=2)
 
 
-# ===================================================================
-# TOOL 18: Full Diagnostic Report
-# ===================================================================
+def _run_diagnosis_pipeline(
+    x: np.ndarray,
+    fs: float,
+    supply_freq_hz: float,
+    poles: int,
+    rotor_speed_rpm: float,
+    bearing_defect_freq_hz: float | None,
+    tolerance_hz: float,
+    language: Language = "en",
+    include_spectrum: bool = False,
+    signal_id: str | None = None,
+) -> dict:
+    """Run the full MCSA diagnostic pipeline.
 
-@mcp.tool()
-def run_full_diagnosis(
-    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
-    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
-    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
-    supply_freq_hz: Annotated[float, Field(description="Supply frequency in Hz")] = 50.0,
-    poles: Annotated[int, Field(description="Number of poles")] = 4,
-    rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
-    bearing_defect_freq_hz: Annotated[float | None, Field(description="Bearing defect frequency in Hz (optional, for bearing analysis)", default=None)] = None,
-    tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
-) -> str:
-    """Run a comprehensive MCSA diagnostic analysis on a current signal.
-
-    Performs the full pipeline: preprocessing → spectrum → fault detection
-    for broken rotor bars, eccentricity, stator faults, and optionally
-    bearing defects. Returns a complete diagnostic report.
+    Shared by ``run_full_diagnosis``, ``diagnose_from_file``, and
+    ``generate_diagnostic_report``.  Returns the complete diagnostic
+    report dict; when ``include_spectrum`` is True, also embeds the
+    ``(frequencies, amplitudes)`` arrays under the ``spectrum`` key.
     """
-    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
-
     # Motor parameters
     params = calculate_motor_parameters(supply_freq_hz, poles, rotor_speed_rpm)
 
-    # Preprocess
+    # Preprocess + spectrum
     x_proc = preprocess_pipeline(x, fs, window="hann")
-
-    # Spectrum
     freqs, amps = compute_fft_spectrum(x_proc, fs, sided="one")
 
     # PSD for band energy
     freqs_psd, psd_vals = compute_psd(x, fs)
 
     # Fault detection
-    brb = brb_fault_index(freqs, amps, params, tolerance_hz)
-    ecc = eccentricity_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz)
-    stator = stator_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz)
+    brb = brb_fault_index(freqs, amps, params, tolerance_hz, signal_duration_s=len(x) / fs, language=language)
+    ecc = eccentricity_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz, language=language)
+    stator = stator_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz, language=language)
 
     # Band energy around fundamental
     be = band_energy_index(freqs_psd, psd_vals, supply_freq_hz, bandwidth_hz=10.0)
@@ -1010,7 +1025,7 @@ def run_full_diagnosis(
     if bearing_defect_freq_hz is not None:
         bearing_result = bearing_fault_index(
             freqs, amps, supply_freq_hz,
-            bearing_defect_freq_hz, "bearing", tolerance_hz=tolerance_hz,
+            bearing_defect_freq_hz, "bearing", tolerance_hz=tolerance_hz, language=language,
         )
 
     # Top peaks
@@ -1018,6 +1033,7 @@ def run_full_diagnosis(
 
     # Assemble report
     report = {
+        "signal_id": signal_id,
         "motor_parameters": params.to_dict(),
         "signal_info": {
             "n_samples": len(x),
@@ -1039,26 +1055,262 @@ def run_full_diagnosis(
             "eccentricity_severity": ecc["severity"],
             "stator_severity": stator["severity"],
             "envelope_kurtosis": env_stats["kurtosis"],
-            "overall_assessment": _overall_assessment(brb, ecc, stator, env_stats),
+            "overall_assessment": _overall_assessment(brb, ecc, stator, env_stats, language),
         },
     }
+    if include_spectrum:
+        report["spectrum"] = {
+            "frequencies_hz": freqs.tolist(),
+            "amplitudes": amps.tolist(),
+        }
+    return report
 
+
+# ===================================================================
+# TOOL 18: Full Diagnostic Report
+# ===================================================================
+
+@mcp.tool()
+def run_full_diagnosis(
+    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
+    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
+    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
+    supply_freq_hz: Annotated[float, Field(description="Supply frequency in Hz")] = 50.0,
+    poles: Annotated[int, Field(description="Number of poles")] = 4,
+    rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
+    bearing_defect_freq_hz: Annotated[float | None, Field(description="Bearing defect frequency in Hz (optional, for bearing analysis)", default=None)] = None,
+    tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
+) -> str:
+    """Run a comprehensive MCSA diagnostic analysis on a current signal.
+
+    Performs the full pipeline: preprocessing → spectrum → fault detection
+    for broken rotor bars, eccentricity, stator faults, and optionally
+    bearing defects. Returns a complete diagnostic report.
+    """
+    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
+    report = _run_diagnosis_pipeline(
+        x, fs,
+        supply_freq_hz=supply_freq_hz,
+        poles=poles,
+        rotor_speed_rpm=rotor_speed_rpm,
+        bearing_defect_freq_hz=bearing_defect_freq_hz,
+        tolerance_hz=tolerance_hz,
+        language=language,
+        signal_id=signal_id,
+    )
     return json.dumps(report, indent=2, default=str)
 
 
-def _overall_assessment(brb: dict, ecc: dict, stator: dict, env_stats: dict) -> str:
+def _overall_assessment(brb: dict, ecc: dict, stator: dict, env_stats: dict, language: Language = "en") -> str:
     """Generate a brief overall assessment string."""
     severities = [brb["severity"], ecc["severity"], stator["severity"]]
 
-    if "severe" in severities:
-        return "CRITICAL — One or more fault indicators at severe level. Immediate inspection recommended."
-    if "moderate" in severities:
-        return "WARNING — Moderate fault indication detected. Schedule inspection."
-    if "incipient" in severities:
-        return "WATCH — Incipient fault signatures detected. Increase monitoring frequency."
+    # Check if any severity is "severe" (in any language)
+    severe_labels = [get_severity_label("severe", "en"), get_severity_label("severe", "zh")]
+    moderate_labels = [get_severity_label("moderate", "en"), get_severity_label("moderate", "zh")]
+    incipient_labels = [get_severity_label("incipient", "en"), get_severity_label("incipient", "zh")]
+
+    if any(s in severe_labels for s in severities):
+        return get_assessment_text("critical", language)
+    if any(s in moderate_labels for s in severities):
+        return get_assessment_text("warning", language)
+    if any(s in incipient_labels for s in severities):
+        return get_assessment_text("watch", language)
     if env_stats["kurtosis"] > 6.0:
-        return "WATCH — Elevated envelope kurtosis may indicate mechanical impulsiveness."
-    return "NORMAL — No significant fault indicators detected."
+        return get_assessment_text("watch", language)
+    return get_assessment_text("normal", language)
+
+
+# ===================================================================
+# TOOL 20: Generate HTML Diagnostic Report
+# ===================================================================
+
+@mcp.tool()
+def generate_diagnostic_report(
+    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
+    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
+    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
+    supply_freq_hz: Annotated[float, Field(description="Supply frequency in Hz")] = 50.0,
+    poles: Annotated[int, Field(description="Number of poles")] = 4,
+    rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
+    bearing_defect_freq_hz: Annotated[float | None, Field(description="Bearing defect frequency in Hz (optional, for bearing analysis)", default=None)] = None,
+    tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Report language ('en' or 'zh')", default="en")] = "en",
+) -> str:
+    """Run the full MCSA pipeline and save a professional HTML report.
+
+    Performs the complete diagnostic analysis (same pipeline as
+    run_full_diagnosis) and writes a standalone, interactive HTML report
+    to the reports directory (~/.mcsa_reports/ by default,
+    configurable via MCSA_REPORTS_DIR).  The report includes a Plotly
+    spectrum chart and a built-in English/Chinese language toggle.
+    Returns the saved file path and metadata.
+    """
+    from mcp_server_mcsa.report_generator import (
+        REPORTS_DIR,
+        save_diagnostic_report,
+    )
+
+    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
+
+    report = _run_diagnosis_pipeline(
+        x, fs,
+        supply_freq_hz=supply_freq_hz,
+        poles=poles,
+        rotor_speed_rpm=rotor_speed_rpm,
+        bearing_defect_freq_hz=bearing_defect_freq_hz,
+        tolerance_hz=tolerance_hz,
+        language=language,
+        signal_id=signal_id,
+        include_spectrum=True,
+    )
+
+    label = signal_id or "signal"
+    metadata = {
+        "supply_freq_hz": supply_freq_hz,
+        "poles": poles,
+        "rotor_speed_rpm": rotor_speed_rpm,
+        "tolerance_hz": tolerance_hz,
+        "bearing_defect_freq_hz": bearing_defect_freq_hz,
+        "reports_directory": str(REPORTS_DIR),
+    }
+    try:
+        saved = save_diagnostic_report(
+            report, label=label, metadata=metadata, language=language
+        )
+    except Exception as exc:  # pragma: no cover - filesystem errors
+        return json.dumps({
+            "error": f"Failed to save HTML report: {exc}",
+            "reports_directory": str(REPORTS_DIR),
+        })
+
+    return json.dumps(saved, indent=2, default=str)
+
+
+# ===================================================================
+# TOOL 21: Generate HTML Spectrum Report
+# ===================================================================
+
+@mcp.tool()
+def generate_spectrum_report(
+    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
+    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
+    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
+    max_freq_hz: Annotated[float | None, Field(description="Maximum frequency to plot (Hz). Omit for full range", default=None)] = None,
+    language: Annotated[Literal["en", "zh"], Field(description="Report language ('en' or 'zh')", default="en")] = "en",
+) -> str:
+    """Compute the FFT spectrum and save a professional HTML report.
+
+    Preprocesses the signal, computes the one-sided amplitude spectrum,
+    finds the top peaks, and writes a standalone interactive HTML report
+    (Plotly chart + bilingual toggle) to the reports directory.
+    """
+    from mcp_server_mcsa.report_generator import (
+        REPORTS_DIR,
+        save_spectrum_report,
+    )
+
+    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
+    x_proc = preprocess_pipeline(x, fs, window="hann")
+    freqs, amps = compute_fft_spectrum(x_proc, fs, sided="one")
+
+    if max_freq_hz is not None:
+        mask = freqs <= max_freq_hz
+        freqs = freqs[mask]
+        amps = amps[mask]
+
+    peaks = detect_peaks(freqs, amps, prominence=0.001, max_peaks=10)
+    signal_info = {
+        "n_samples": len(x),
+        "sampling_freq_hz": fs,
+        "duration_s": round(len(x) / fs, 3),
+        "freq_resolution_hz": round(float(freqs[1] - freqs[0]), 6) if len(freqs) > 1 else 0,
+    }
+    label = signal_id or "signal"
+    metadata = {
+        "signal_id": label,
+        "max_freq_hz": max_freq_hz,
+        "reports_directory": str(REPORTS_DIR),
+    }
+    try:
+        saved = save_spectrum_report(
+            freqs.tolist(), amps.tolist(), peaks, signal_info,
+            label=label, metadata=metadata, language=language,
+        )
+    except Exception as exc:  # pragma: no cover - filesystem errors
+        return json.dumps({
+            "error": f"Failed to save HTML report: {exc}",
+            "reports_directory": str(REPORTS_DIR),
+        })
+    return json.dumps(saved, indent=2, default=str)
+
+
+# ===================================================================
+# TOOL 22: Generate HTML Envelope Report
+# ===================================================================
+
+@mcp.tool()
+def generate_envelope_report(
+    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
+    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
+    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
+    bandpass_low_hz: Annotated[float | None, Field(description="Lower bandpass cutoff before envelope (Hz)", default=None)] = None,
+    bandpass_high_hz: Annotated[float | None, Field(description="Upper bandpass cutoff before envelope (Hz)", default=None)] = None,
+    max_freq_hz: Annotated[float | None, Field(description="Max envelope frequency to plot (Hz)", default=None)] = None,
+    language: Annotated[Literal["en", "zh"], Field(description="Report language ('en' or 'zh')", default="en")] = "en",
+) -> str:
+    """Compute the envelope spectrum and save a professional HTML report.
+
+    Hilbert-envelope analysis on the (optionally bandpassed) current
+    signal: envelope spectrum on a Plotly chart plus envelope statistical
+    indicators, written as a standalone bilingual HTML report.
+    """
+    from mcp_server_mcsa.report_generator import (
+        REPORTS_DIR,
+        save_envelope_report,
+    )
+
+    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
+
+    bp = None
+    if bandpass_low_hz is not None and bandpass_high_hz is not None:
+        bp = (bandpass_low_hz, bandpass_high_hz)
+
+    freqs, amps = envelope_spectrum(x, fs, bandpass=bp)
+    if max_freq_hz is not None:
+        mask = freqs <= max_freq_hz
+        freqs = freqs[mask]
+        amps = amps[mask]
+
+    env = hilbert_envelope(x)
+    env_dc_removed = env - np.mean(env)
+    env_stats = envelope_statistical_indices(env_dc_removed)
+
+    signal_info = {
+        "n_samples": len(x),
+        "sampling_freq_hz": fs,
+        "duration_s": round(len(x) / fs, 3),
+    }
+    label = signal_id or "signal"
+    metadata = {
+        "signal_id": label,
+        "bandpass_low_hz": bandpass_low_hz,
+        "bandpass_high_hz": bandpass_high_hz,
+        "max_freq_hz": max_freq_hz,
+        "reports_directory": str(REPORTS_DIR),
+    }
+    try:
+        saved = save_envelope_report(
+            freqs.tolist(), amps.tolist(), env_stats, signal_info,
+            label=label, metadata=metadata, language=language,
+        )
+    except Exception as exc:  # pragma: no cover - filesystem errors
+        return json.dumps({
+            "error": f"Failed to save HTML report: {exc}",
+            "reports_directory": str(REPORTS_DIR),
+        })
+    return json.dumps(saved, indent=2, default=str)
 
 
 # ===================================================================
@@ -1077,6 +1329,7 @@ def diagnose_from_file(
     channel: Annotated[int, Field(description="WAV channel index", default=0)] = 0,
     bearing_defect_freq_hz: Annotated[float | None, Field(description="Bearing defect frequency in Hz (optional)", default=None)] = None,
     tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Output language for text fields", default="en")] = "en",
 ) -> str:
     """Load a signal from file and run the full MCSA diagnostic pipeline.
 
@@ -1099,70 +1352,18 @@ def diagnose_from_file(
     # Store signal for potential follow-up analysis
     sig_id = _store_signal(x, fs_sample, source_file=loaded["file_path"])
 
-    # Motor parameters
-    params = calculate_motor_parameters(supply_freq_hz, poles, rotor_speed_rpm)
-
-    # Preprocess
-    x_proc = preprocess_pipeline(x, fs_sample, window="hann")
-
-    # Spectrum
-    freqs, amps = compute_fft_spectrum(x_proc, fs_sample, sided="one")
-
-    # PSD
-    freqs_psd, psd_vals = compute_psd(x, fs_sample)
-
-    # Fault detection
-    brb = brb_fault_index(freqs, amps, params, tolerance_hz)
-    ecc = eccentricity_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz)
-    stator = stator_fault_index(freqs, amps, params, tolerance_hz=tolerance_hz)
-
-    # Band energy
-    be = band_energy_index(freqs_psd, psd_vals, supply_freq_hz, bandwidth_hz=10.0)
-
-    # Envelope
-    env = hilbert_envelope(x)
-    env_dc = env - np.mean(env)
-    env_stats = envelope_statistical_indices(env_dc)
-
-    # Bearing
-    bearing_result = None
-    if bearing_defect_freq_hz is not None:
-        bearing_result = bearing_fault_index(
-            freqs, amps, supply_freq_hz,
-            bearing_defect_freq_hz, "bearing", tolerance_hz=tolerance_hz,
-        )
-
-    # Peaks
-    peaks = detect_peaks(freqs, amps, prominence=0.001, max_peaks=10)
-
-    report = {
-        "signal_id": sig_id,
-        "source_file": loaded["file_path"],
-        "file_format": loaded["format"],
-        "motor_parameters": params.to_dict(),
-        "signal_info": {
-            "n_samples": loaded["n_samples"],
-            "sampling_freq_hz": fs_sample,
-            "duration_s": loaded["duration_s"],
-            "freq_resolution_hz": round(float(freqs[1] - freqs[0]), 6) if len(freqs) > 1 else 0,
-        },
-        "top_spectral_peaks": peaks,
-        "fault_analysis": {
-            "broken_rotor_bars": brb,
-            "eccentricity": ecc,
-            "stator_inter_turn": stator,
-            "bearing": bearing_result,
-        },
-        "band_energy_around_fundamental": be,
-        "envelope_statistics": env_stats,
-        "summary": {
-            "brb_severity": brb["severity"],
-            "eccentricity_severity": ecc["severity"],
-            "stator_severity": stator["severity"],
-            "envelope_kurtosis": env_stats["kurtosis"],
-            "overall_assessment": _overall_assessment(brb, ecc, stator, env_stats),
-        },
-    }
+    report = _run_diagnosis_pipeline(
+        x, fs_sample,
+        supply_freq_hz=supply_freq_hz,
+        poles=poles,
+        rotor_speed_rpm=rotor_speed_rpm,
+        bearing_defect_freq_hz=bearing_defect_freq_hz,
+        tolerance_hz=tolerance_hz,
+        language=language,
+        signal_id=sig_id,
+    )
+    report["source_file"] = loaded["file_path"]
+    report["file_format"] = loaded["format"]
 
     return json.dumps(report, indent=2, default=str)
 

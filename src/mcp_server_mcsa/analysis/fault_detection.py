@@ -11,6 +11,13 @@ from numpy.typing import NDArray
 
 from mcp_server_mcsa.analysis.motor import MotorParameters
 from mcp_server_mcsa.analysis.spectral import amplitude_at_frequency
+from mcp_server_mcsa.i18n import (
+    Language,
+    get_detection_reason,
+    get_fault_type_name,
+    get_severity_label,
+    get_text,
+)
 
 # ---------------------------------------------------------------------------
 # Severity thresholds (dB below fundamental)
@@ -69,6 +76,7 @@ def _build_detection_status(
     expected_sideband_freqs_hz: list[float],
     brb_sideband_distance_hz: float | None = None,
     signal_duration_s: float | None = None,
+    language: Language = "en",
 ) -> dict:
     """Construct the ``detection_status`` block per issue #2.
 
@@ -105,6 +113,7 @@ def _build_detection_status(
             min_resolution_hz=...)`` MUST pass ``signal_duration_s`` or
             the main-lobe check will silently miss the BRB false-positive
             case (code-review P0 from 2026-05-28).
+        language: Output language ("en" or "zh").
 
     Returns:
         The five-field ``detection_status`` dict the spec describes.
@@ -150,7 +159,7 @@ def _build_detection_status(
         if brb_sideband_distance_hz < main_lobe_half_hz:
             return {
                 "detected": False,
-                "reason": "sideband_inside_supply_main_lobe",
+                "reason": get_detection_reason("sideband_inside_supply_main_lobe", language),
                 "fft_bin_width_hz": round(fft_bin_width_hz, 6),
                 "tolerance_hz": float(tolerance_hz),
                 "min_bin_width_for_tolerance_hz": round(min_bin_width, 6),
@@ -161,7 +170,7 @@ def _build_detection_status(
     )
 
     if detected:
-        reason = "detected"
+        reason = get_detection_reason("detected", language)
     else:
         # Spectrum physical range. compute_fft_spectrum is one-sided by
         # default → freqs ∈ [0, Nyquist]; freqs[-1] gives the upper
@@ -172,11 +181,11 @@ def _build_detection_status(
             f < f_min or f > f_max for f in expected_sideband_freqs_hz
         )
         if all_out_of_range:
-            reason = "frequency_out_of_range"
+            reason = get_detection_reason("frequency_out_of_range", language)
         elif fft_bin_width_hz > min_bin_width:
-            reason = "frequency_resolution_insufficient"
+            reason = get_detection_reason("frequency_resolution_insufficient", language)
         else:
-            reason = "no_sideband_present"
+            reason = get_detection_reason("no_sideband_present", language)
 
     return {
         "detected": detected,
@@ -209,6 +218,7 @@ def brb_fault_index(
     params: MotorParameters,
     tolerance_hz: float = 0.5,
     signal_duration_s: float | None = None,
+    language: Language = "en",
 ) -> dict:
     """Compute the Broken Rotor Bar (BRB) fault index.
 
@@ -231,6 +241,7 @@ def brb_fault_index(
             BRB sideband can be silently classified as ``detected``
             even when it lies inside the supply main lobe (code-review
             P0 from 2026-05-28).
+        language: Output language ("en" or "zh").
 
     Returns:
         Dictionary with frequencies found, amplitudes, dB indices,
@@ -257,7 +268,7 @@ def brb_fault_index(
     severity = _classify_severity(max(db_lower, db_upper), BRB_THRESHOLDS)
 
     return {
-        "fault_type": "broken_rotor_bars",
+        "fault_type": get_fault_type_name("broken_rotor_bars", language),
         "fundamental": {
             "expected_hz": fs,
             **fundamental,
@@ -273,7 +284,7 @@ def brb_fault_index(
             "db_relative": round(float(db_upper), 2),
         },
         "combined_index_db": round(float(db_combined), 2),
-        "severity": severity,
+        "severity": get_severity_label(severity, language),
         "thresholds_db": BRB_THRESHOLDS,
         "detection_status": _build_detection_status(
             freqs=freqs,
@@ -282,6 +293,7 @@ def brb_fault_index(
             expected_sideband_freqs_hz=[f_lower, f_upper],
             brb_sideband_distance_hz=2.0 * s * fs,
             signal_duration_s=signal_duration_s,
+            language=language,
         ),
     }
 
@@ -296,6 +308,7 @@ def eccentricity_fault_index(
     params: MotorParameters,
     harmonics: int = 3,
     tolerance_hz: float = 0.5,
+    language: Language = "en",
 ) -> dict:
     """Compute eccentricity fault indices.
 
@@ -307,6 +320,7 @@ def eccentricity_fault_index(
         params: Motor parameters.
         harmonics: Number of harmonic orders.
         tolerance_hz: Frequency tolerance.
+        language: Output language ("en" or "zh").
 
     Returns:
         Dictionary with sideband amplitudes, dB indices, severity.
@@ -351,20 +365,21 @@ def eccentricity_fault_index(
         expected_sidebands_for_status.extend([fs - k * fr, fs + k * fr])
 
     return {
-        "fault_type": "eccentricity",
+        "fault_type": get_fault_type_name("eccentricity", language),
         "fundamental": {
             "expected_hz": fs,
             **fund,
         },
         "sidebands": sidebands,
         "worst_sideband_db": round(float(worst_db), 2),
-        "severity": severity,
+        "severity": get_severity_label(severity, language),
         "thresholds_db": ECCENTRICITY_THRESHOLDS,
         "detection_status": _build_detection_status(
             freqs=freqs,
             tolerance_hz=tolerance_hz,
             headline_db=float(worst_db),
             expected_sideband_freqs_hz=expected_sidebands_for_status,
+            language=language,
         ),
     }
 
@@ -379,6 +394,7 @@ def stator_fault_index(
     params: MotorParameters,
     harmonics: int = 3,
     tolerance_hz: float = 0.5,
+    language: Language = "en",
 ) -> dict:
     """Compute stator inter‑turn fault indices.
 
@@ -390,6 +406,7 @@ def stator_fault_index(
         params: Motor parameters.
         harmonics: Number of harmonic orders.
         tolerance_hz: Frequency tolerance.
+        language: Output language ("en" or "zh").
 
     Returns:
         Dictionary with sideband analysis and severity.
@@ -429,15 +446,23 @@ def stator_fault_index(
     severity = _classify_severity(float(worst_db), ECCENTRICITY_THRESHOLDS)
 
     return {
-        "fault_type": "stator_inter_turn",
+        "fault_type": get_fault_type_name("stator_inter_turn", language),
         "fundamental": {
             "expected_hz": fs,
             **fund,
         },
         "sidebands": sidebands,
         "worst_sideband_db": round(float(worst_db), 2),
-        "severity": severity,
+        "severity": get_severity_label(severity, language),
         "thresholds_db": ECCENTRICITY_THRESHOLDS,
+        "detection_status": _build_detection_status(
+            freqs=freqs,
+            tolerance_hz=tolerance_hz,
+            headline_db=float(worst_db),
+            expected_sideband_freqs_hz=[fs - 2 * k * fr for k in range(1, harmonics + 1)]
+            + [fs + 2 * k * fr for k in range(1, harmonics + 1)],
+            language=language,
+        ),
     }
 
 
@@ -453,6 +478,7 @@ def bearing_fault_index(
     defect_type: str = "bpfo",
     harmonics: int = 2,
     tolerance_hz: float = 0.5,
+    language: Language = "en",
 ) -> dict:
     """Compute bearing fault indices from stator‑current spectrum.
 
@@ -468,6 +494,7 @@ def bearing_fault_index(
         defect_type: Label for the defect type.
         harmonics: Number of sideband orders.
         tolerance_hz: Frequency tolerance.
+        language: Output language ("en" or "zh").
 
     Returns:
         Dictionary with sideband analysis.
@@ -508,8 +535,15 @@ def bearing_fault_index(
     for k in range(1, harmonics + 1):
         expected_sidebands_for_status.extend([fs - k * fd, fs + k * fd])
 
+    # Map defect_type to translation key.  A generic "bearing" label maps to
+    # the generic key instead of an undefined "bearing_bearing".
+    if defect_type == "bearing":
+        defect_type_key = "bearing"
+    else:
+        defect_type_key = f"bearing_{defect_type}"
+
     return {
-        "fault_type": f"bearing_{defect_type}",
+        "fault_type": get_fault_type_name(defect_type_key, language),
         "defect_frequency_hz": round(fd, 4),
         "fundamental": {
             "expected_hz": fs,
@@ -517,15 +551,13 @@ def bearing_fault_index(
         },
         "sidebands": sidebands,
         "worst_sideband_db": round(float(worst_db), 2),
-        "note": (
-            "Bearing signatures in stator current are typically weak. "
-            "Confirm with envelope analysis or vibration measurements."
-        ),
+        "note": get_text("note.bearing_weak", language),
         "detection_status": _build_detection_status(
             freqs=freqs,
             tolerance_hz=tolerance_hz,
             headline_db=float(worst_db),
             expected_sideband_freqs_hz=expected_sidebands_for_status,
+            language=language,
         ),
     }
 

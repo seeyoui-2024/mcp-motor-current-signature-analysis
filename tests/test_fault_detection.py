@@ -426,6 +426,18 @@ class TestBearingFaultIndex:
         assert result["fault_type"] == "bearing_bpfo"
         assert "note" in result
 
+    def test_generic_bearing_defect_type_normalised(self, healthy_signal_50hz):
+        data = healthy_signal_50hz
+        freqs, amps = compute_fft_spectrum(data["signal"], data["fs"])
+        result = bearing_fault_index(
+            freqs, amps,
+            supply_freq_hz=50.0,
+            bearing_defect_freq_hz=85.0,
+            defect_type="bearing",
+            language="zh",
+        )
+        assert result["fault_type"] == "轴承"
+
 
 class TestBandEnergyIndex:
     def test_nonzero_energy(self):

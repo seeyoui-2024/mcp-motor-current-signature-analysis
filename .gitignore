@@ -37,6 +37,10 @@ htmlcov/
 *.whl
 *.tar.gz
 
+# Generated HTML reports
+reports/
+.mcsa_reports/
+
 # MCP Publisher
 mcp-publisher.exe
 mcp-publisher
