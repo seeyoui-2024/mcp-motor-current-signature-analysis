@@ -1,6 +1,7 @@
 {
   "title": "mcp-server-mcsa: MCP Server for Motor Current Signature Analysis",
   "description": "MCP server for Motor Current Signature Analysis (MCSA) — spectral analysis, fault frequency calculation, and automated fault detection in electric motors.",
+  "version": "0.4.0",
   "creators": [
     {
       "name": "Di Maggio, Luigi Gianpio",
@@ -22,7 +23,7 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis",
+      "identifier": "https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis",
       "relation": "isSupplementTo",
       "scheme": "url"
     },

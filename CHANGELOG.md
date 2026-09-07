@@ -5,6 +5,62 @@ All notable changes to `mcp-server-mcsa` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-09-07
+
+Bilingual, self-contained **HTML report generation** for the full
+diagnostic suite, mirroring the report workflow of the companion
+predictive-maintenance server.
+
+### Added
+
+- **`html_templates`** module — `create_diagnostic_report`,
+  `create_spectrum_report`, and `create_envelope_report` builders that
+  emit standalone, responsive HTML with inlined CSS, a Plotly.js spectrum
+  chart, and an in-page **English/中文** toggle.  The client-side
+  translation dictionary is derived from the server `i18n.TRANSLATIONS`
+  table (single source of truth), and every rendered label carries a
+  `data-i18n` attribute — so the toggle switches the *entire* report
+  content (section titles, info labels, table headers, fault analysis,
+  assessment) without a server round-trip.
+- **`report_generator`** module — `save_diagnostic_report`,
+  `save_spectrum_report`, `save_envelope_report` presave helpers with
+  collision-free timestamped file names, plus `list_reports`.  Reports
+  are written to `~/.mcsa_reports/` (configurable via the
+  `MCSA_REPORTS_DIR` environment variable).
+- **Three new MCP tools** (server now registers 24):
+  `generate_diagnostic_report`, `generate_spectrum_report`,
+  `generate_envelope_report` — each accepts a `language` parameter
+  (`"en"`/`"zh"`).
+- **`scripts/generate_all_reports.py`** — batch generator producing a
+  full demo suite (5 fault scenarios × spectrum/envelope/diagnostic ×
+  both languages).
+- **`mcsa://fault-signatures/zh`** resource — Chinese version of the
+  fault-signature knowledge base.
+
+### Fixed
+
+- Generic bearing detection passed a literal `defect_type="bearing"`,
+  producing an untranslatable `fault_type.bearing_bearing` label in both
+  JSON output and reports.  `bearing_fault_index` now normalises the
+  generic case to the `fault_type.bearing` key; a missing translation
+  key was added for it.
+- Dependency bound tightened to `mcp>=1.0.0,<2.0.0` to protect against
+  SDK 2.x breaking the tool schemas.
+
+### Backward compatibility
+
+- All v0.3.0 tools and return dicts unchanged; the three new tools are
+  purely additive.
+
+### Tests
+
+- `tests/test_report_generator.py` — 16 tests covering bilingual
+  rendering, embedded translations validity, `data-i18n` sink
+  coherence (every key resolves in the embedded dictionary, including
+  fault sections and assessments), metadata JSON, file uniqueness,
+  UTF-8 safety, and report I/O.
+- 136 tests pass on this release (vs 117 on v0.3.0).
+
 ## [0.3.0] — 2026-05-29
 
 Three coordinated enhancements addressing limitations of v0.2.2 identified
@@ -110,7 +166,8 @@ do not pass the new keyword arguments.
 
 - LLM predictive-maintenance tagline added.
 
-[0.3.0]: https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis/compare/v0.2.2...v0.3.0
-[0.2.2]: https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis/compare/v0.1.3...v0.2.0
+[0.4.0]: https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis/compare/v0.2.2...v0.3.0
+[0.2.2]: https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis/compare/v0.1.3...v0.2.0

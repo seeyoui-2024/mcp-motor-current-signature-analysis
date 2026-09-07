@@ -105,6 +105,12 @@ scripts if needed.
 
 ## Tool Reference
 
+> **i18n** — Most diagnostic and all report-generation tools accept a
+> `language` parameter (`"en"` or `"zh"`) that controls the language of
+> prose fields, fault-type names, and detection-status reasons in the
+> JSON output.  The three `generate_*_report` tools additionally produce
+> **bilingual** HTML reports with an in-page **English/中文** toggle.
+
 ### Signal Acquisition
 
 #### `inspect_signal_file`
@@ -353,6 +359,66 @@ tracking — useful for ramp-up/ramp-down transient analysis.
 
 ---
 
+### HTML Report Generation
+
+Generates a **standalone, interactive HTML report** (Plotly.js chart
+bundle, no server needed to view) written to `~/.mcsa_reports/`
+(configurable via the `MCSA_REPORTS_DIR` environment variable).  Every
+text label carries a `data-i18n` attribute, so the in-page
+**English/中文** toggle switches the entire report content.  Set
+`language` to `"zh"` to render the report pre-localised in Chinese.
+
+#### `generate_diagnostic_report`
+
+Runs the **full** MCSA pipeline (same analysis as `run_full_diagnosis`)
+and writes a professional HTML report: signal info, motor parameters,
+interactive spectrum chart, all fault sections, top peaks, band energy,
+envelope statistics, and an overall assessment.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `signal_id` | `str \| null` | `null` | Stored signal ID (preferred over raw array) |
+| `signal` | `list[float] \| null` | `null` | Raw current signal (fallback) |
+| `sampling_freq_hz` | `float \| null` | `null` | Auto-resolved from `signal_id` |
+| `supply_freq_hz` | `float` | `50.0` | Supply frequency (Hz) |
+| `poles` | `int` | `4` | Number of poles |
+| `rotor_speed_rpm` | `float` | `1470.0` | Rotor speed (RPM) |
+| `bearing_defect_freq_hz` | `float \| null` | `null` | Enables bearing analysis |
+| `tolerance_hz` | `float` | `0.5` | Frequency search tolerance |
+| `language` | `"en" \| "zh"` | `"en"` | Initial report language |
+
+**Returns** — JSON with the report file path, unique `file_name`,
+`report_type`, `file_size_kb`, and embedded `metadata`.
+
+---
+
+#### `generate_spectrum_report`
+
+Preprocesses the signal, computes a one-sided FFT amplitude spectrum,
+finds the top peaks, and writes an interactive spectrum report.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `signal_id` / `signal` / `sampling_freq_hz` | — | — | As above |
+| `max_freq_hz` | `float \| null` | `null` | Crop the spectrum plot to ≤ this frequency |
+| `language` | `"en" \| "zh"` | `"en"` | Initial report language |
+
+---
+
+#### `generate_envelope_report`
+
+Computes the Hilbert envelope spectrum plus statistical indicators
+(kurtosis, skewness, crest factor, RMS, peak) and writes an interactive
+envelope report.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `signal_id` / `signal` / `sampling_freq_hz` | — | — | As above |
+| `max_freq_hz` | `float \| null` | `null` | Crop the envelope spectrum plot |
+| `language` | `"en" \| "zh"` | `"en"` | Initial report language |
+
+---
+
 ### One-Shot Diagnostic Pipelines
 
 #### `run_full_diagnosis`
@@ -414,7 +480,8 @@ of the four major fault families:
 | Bearing Defects | $f_s \pm k \cdot f_{\text{defect}}$ |
 
 Access it via `mcp.read_resource("mcsa://fault-signatures")` from your
-MCP client.
+MCP client.  A Simplified Chinese version is available at
+`mcsa://fault-signatures/zh` (`mcp.read_resource("mcsa://fault-signatures/zh")`).
 
 ---
 
@@ -636,6 +703,10 @@ Yes — signals and spectra are persisted as compressed `.npz` files in
 This keeps large arrays out of the chat context and allows data to
 survive server restarts. Use `list_stored_data` and `clear_stored_data`
 to manage the stored data.
+
+The `generate_*_report` tools also write standalone HTML reports to
+`~/.mcsa_reports/` (configurable via `MCSA_REPORTS_DIR`); they never
+modify the signals or spectra in the data store.
 
 **Q: Can I use inverter-fed motors?**
 Yes.  Set `supply_freq_hz` to the actual inverter output frequency.  Be

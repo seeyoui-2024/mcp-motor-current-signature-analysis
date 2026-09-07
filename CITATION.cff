@@ -11,11 +11,11 @@ authors:
     email: "luigi.dimaggio@polito.it"
     affiliation: "Politecnico di Torino"
     orcid: "https://orcid.org/0000-0002-2295-8944"
-version: "0.2.2"
-date-released: "2025-01-01"
+version: "0.4.0"
+date-released: "2026-09-07"
 license: MIT
-repository-code: "https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis"
-url: "https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis"
+repository-code: "https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis"
+url: "https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis"
 keywords:
   - motor-current-signature-analysis
   - fault-detection

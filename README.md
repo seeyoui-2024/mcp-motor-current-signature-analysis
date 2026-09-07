@@ -1,6 +1,6 @@
 # mcp-server-mcsa
 
-<!-- mcp-name: io.github.LGDiMaggio/mcp-server-mcsa -->
+<!-- mcp-name: io.github.seeyoui-2024/mcp-server-mcsa -->
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -25,9 +25,10 @@ MCSA is an industry-standard condition-monitoring technique that analyses the ha
 - **Fault detection** — automated severity classification (healthy / incipient / moderate / severe)
 - **One-shot diagnostics** — full pipeline from signal array or directly from file
 - **Test signal generation** — synthetic signals with configurable fault injection for demos and benchmarking
+- **Bilingual HTML reports** — self-contained, interactive reports (Plotly.js) for full diagnostics, spectrum, and envelope analyses with an in-page **English/中文** toggle that switches the entire report content; saved to `~/.mcsa_reports/` (`MCSA_REPORTS_DIR` to override)
 - **Persistent data store** — signals and spectra saved to `~/.mcsa_data/` as compressed `.npz` files; referenced by short IDs (`sig_xxxx`, `spec_xxxx`) to keep large arrays out of the chat context; data survives server restarts
 
-## Tools (21)
+## Tools (24)
 
 | Tool | Description |
 |------|-------------|
@@ -50,6 +51,9 @@ MCSA is an industry-standard condition-monitoring technique that analyses the ha
 | `generate_test_current_signal` | Synthetic motor current with optional faults → returns `signal_id` |
 | `run_full_diagnosis` | Complete MCSA diagnostic pipeline from signal or `signal_id` |
 | `diagnose_from_file` | Complete MCSA diagnostic pipeline directly from file |
+| `generate_diagnostic_report` | Full pipeline + save a professional **bilingual** HTML report (`~/.mcsa_reports/`) |
+| `generate_spectrum_report` | FFT spectrum + save an interactive English/中文 HTML report |
+| `generate_envelope_report` | Envelope spectrum + save an interactive English/中文 HTML report |
 | `list_stored_data` | List all signals and spectra persisted on disk |
 | `clear_stored_data` | Delete one or all stored items from disk |
 
@@ -58,6 +62,7 @@ MCSA is an industry-standard condition-monitoring technique that analyses the ha
 | URI | Description |
 |-----|-------------|
 | `mcsa://fault-signatures` | Reference table of fault signatures, frequencies, and empirical thresholds |
+| `mcsa://fault-signatures/zh` | Same reference table in Simplified Chinese |
 
 ## Prompts
 
@@ -145,6 +150,12 @@ In your MCP client, try:
 
 If the server responds with a diagnostic report, you're all set.
 
+To also produce a shareable report file, ask:
+
+> "Generate a bilingual HTML diagnostic report for signal `sig_xxxx`, in Chinese."
+
+A standalone report is saved to `~/.mcsa_reports/` (see [HTML Reports](#html-reports)).
+
 ---
 
 <details>
@@ -188,7 +199,7 @@ Then configure your client with:
 <summary><strong>Alternative: install from source</strong> (for development)</summary>
 
 ```bash
-git clone https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis.git
+git clone https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis.git
 cd mcp-motor-current-signature-analysis
 uv sync --dev
 ```
@@ -253,6 +264,27 @@ variable).  This means:
 
 Use `list_stored_data` to see everything on disk and `clear_stored_data`
 to remove items.
+
+## HTML Reports
+
+Generated reports are written as standalone HTML files to
+`~/.mcsa_reports/` (configurable via the `MCSA_REPORTS_DIR` environment
+variable).  Use `generate_diagnostic_report`, `generate_spectrum_report`,
+or `generate_envelope_report` to produce them.  Each report bundles the
+Plotly.js chart inline, and every text label carries a `data-i18n`
+attribute so the built-in **English/中文** toggle switches the **entire**
+report content in-browser — no server round-trip needed.  Passing
+`"language": "zh"` renders the report pre-localised in Chinese.
+
+```
+~/.mcsa_reports/
+  mcsa_diagnostic_brb_20260907-042720-000010.html
+  mcsa_diagnostic_spectrum_brb_20260907-042720-000006.html
+  mcsa_diagnostic_envelope_brb_20260907-042720-000007.html
+```
+
+A batch generator for demo suites is available at
+`scripts/generate_all_reports.py`.
 
 ## Usage Examples
 
@@ -350,7 +382,7 @@ Defect frequencies depend on bearing geometry (BPFO, BPFI, BSF, FTF).
 ### Setup
 
 ```bash
-git clone https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis.git
+git clone https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis.git
 cd mcp-motor-current-signature-analysis
 uv sync --dev
 ```
@@ -396,7 +428,7 @@ If you use this software in your research, please cite it:
   author       = {Di Maggio, Luigi Gianpio},
   title        = {mcp-server-mcsa: MCP Server for Motor Current Signature Analysis},
   year         = 2025,
-  url          = {https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis},
+  url          = {https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis},
   license      = {MIT}
 }
 ```

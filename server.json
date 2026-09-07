@@ -1,18 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.LGDiMaggio/mcp-server-mcsa",
+  "name": "io.github.seeyoui-2024/mcp-server-mcsa",
   "title": "Motor Current Signature Analysis",
   "description": "MCP server for Motor Current Signature Analysis — fault detection in electric motors",
   "repository": {
-    "url": "https://github.com/LGDiMaggio/mcp-motor-current-signature-analysis",
+    "url": "https://github.com/seeyoui-2024/mcp-motor-current-signature-analysis",
     "source": "github"
   },
-  "version": "0.2.2",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "mcp-server-mcsa",
-      "version": "0.2.2",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       }
