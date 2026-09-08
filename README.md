@@ -25,10 +25,10 @@ MCSA is an industry-standard condition-monitoring technique that analyses the ha
 - **Fault detection** — automated severity classification (healthy / incipient / moderate / severe)
 - **One-shot diagnostics** — full pipeline from signal array or directly from file
 - **Test signal generation** — synthetic signals with configurable fault injection for demos and benchmarking
-- **Bilingual HTML reports** — self-contained, interactive reports (Plotly.js) for full diagnostics, spectrum, and envelope analyses with an in-page **English/中文** toggle that switches the entire report content; saved to `~/.mcsa_reports/` (`MCSA_REPORTS_DIR` to override)
+- **Bilingual HTML reports** — self-contained, interactive reports (Plotly.js) for full diagnostics, spectrum, and envelope analyses with an in-page **English/中文** toggle that switches the entire report content; saved to `~/.mcsa_reports/` (`MCSA_REPORTS_DIR` to override). **DOCX Word reports** also available via `generate_docx_report`
 - **Persistent data store** — signals and spectra saved to `~/.mcsa_data/` as compressed `.npz` files; referenced by short IDs (`sig_xxxx`, `spec_xxxx`) to keep large arrays out of the chat context; data survives server restarts
 
-## Tools (24)
+## Tools (25)
 
 | Tool | Description |
 |------|-------------|
@@ -54,6 +54,7 @@ MCSA is an industry-standard condition-monitoring technique that analyses the ha
 | `generate_diagnostic_report` | Full pipeline + save a professional **bilingual** HTML report (`~/.mcsa_reports/`) |
 | `generate_spectrum_report` | FFT spectrum + save an interactive English/中文 HTML report |
 | `generate_envelope_report` | Envelope spectrum + save an interactive English/中文 HTML report |
+| `generate_docx_report` | Full pipeline + save a bilingual **Word (DOCX)** report (`~/.mcsa_reports/`) |
 | `list_stored_data` | List all signals and spectra persisted on disk |
 | `clear_stored_data` | Delete one or all stored items from disk |
 

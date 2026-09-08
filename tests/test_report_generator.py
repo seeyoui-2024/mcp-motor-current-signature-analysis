@@ -14,10 +14,12 @@ from mcp_server_mcsa.html_templates import (
     create_envelope_report,
     create_spectrum_report,
 )
+from mcp_server_mcsa.report_docx import generate_docx_report
 from mcp_server_mcsa.report_generator import (
     REPORTS_DIR,
     list_reports,
     save_diagnostic_report,
+    save_docx_report,
     save_envelope_report,
     save_spectrum_report,
 )
@@ -228,3 +230,58 @@ class TestListReports:
     def test_defaults_to_reports_dir(self):
         # REPORTS_DIR constant exists and is a valid path.
         assert REPORTS_DIR.is_dir()
+
+
+class TestDocxReport:
+    def test_generate_docx_en(self, brb_report):
+        docx_bytes, error = generate_docx_report(brb_report, lang="en")
+        assert error == ""
+        assert docx_bytes is not None
+        assert len(docx_bytes) > 500
+
+    def test_generate_docx_zh(self, brb_report):
+        docx_bytes, error = generate_docx_report(brb_report, lang="zh")
+        assert error == ""
+        assert docx_bytes is not None
+
+    def test_generate_docx_no_bearing(self, brb_report):
+        report = {k: v for k, v in brb_report.items() if k != "spectrum"}
+        report["fault_analysis"] = {
+            "broken_rotor_bars": report["fault_analysis"]["broken_rotor_bars"],
+            "eccentricity": None,
+            "stator_inter_turn": None,
+            "bearing": None,
+        }
+        docx_bytes, error = generate_docx_report(report, lang="en")
+        assert error == ""
+        assert docx_bytes is not None
+
+    def test_generate_docx_minimal(self):
+        minimal = {"summary": {"overall_assessment": "NORMAL"}}
+        docx_bytes, error = generate_docx_report(minimal, lang="en")
+        assert error == ""
+        assert docx_bytes is not None
+
+    def test_save_docx_report(self, brb_report, tmp_path):
+        saved = save_docx_report(
+            brb_report, label="case_docx", language="en", directory=tmp_path
+        )
+        assert saved["report_type"] == "mcsa_docx"
+        assert (tmp_path / saved["file_name"]).exists()
+        assert saved["file_name"].endswith(".docx")
+        assert saved["file_size_kb"] > 0
+
+    def test_save_docx_zh(self, brb_report, tmp_path):
+        saved = save_docx_report(
+            brb_report, label="case_zh_docx", language="zh", directory=tmp_path
+        )
+        assert saved["report_type"] == "mcsa_docx"
+        assert (tmp_path / saved["file_name"]).exists()
+
+    def test_list_reports_includes_docx(self, brb_report, tmp_path):
+        save_diagnostic_report(brb_report, label="html_case", language="en", directory=tmp_path)
+        save_docx_report(brb_report, label="docx_case", language="en", directory=tmp_path)
+        reports = list_reports(tmp_path)
+        names = [r["file_name"] for r in reports]
+        assert any("html_case" in n for n in names)
+        assert any("docx_case" in n for n in names)

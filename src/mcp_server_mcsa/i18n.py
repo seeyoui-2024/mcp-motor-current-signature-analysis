@@ -162,6 +162,22 @@ TRANSLATIONS: dict[str, dict[Language, str]] = {
     "detail.yes": {"en": "Found", "zh": "找到"},
     "detail.no": {"en": "Not found", "zh": "未找到"},
     "report.html_saved": {"en": "HTML diagnostic report saved", "zh": "HTML 诊断报告已保存"},
+    "report.docx_saved": {"en": "DOCX diagnostic report saved", "zh": "DOCX 诊断报告已保存"},
+
+    # DOCX report labels
+    "report.title.mcsa_diagnostic": {"en": "MCSA Diagnostic Report", "zh": "MCSA 诊断报告"},
+    "ui.generated": {"en": "Generated", "zh": "生成时间"},
+    "doc.parameter": {"en": "Parameter", "zh": "参数"},
+    "doc.value": {"en": "Value", "zh": "值"},
+    "signal.source_file": {"en": "Source File", "zh": "数据源"},
+    "motor_param.supply_freq": {"en": "Supply Frequency", "zh": "供电频率"},
+    "motor_param.poles": {"en": "Number of Poles", "zh": "极数"},
+    "report.overall_assessment": {"en": "Overall Assessment", "zh": "综合评估"},
+    "report.recommendations": {"en": "Recommendations", "zh": "建议"},
+    "rec.immediate": {"en": "Immediate inspection recommended", "zh": "建议立即检查"},
+    "rec.maintenance": {"en": "Schedule maintenance", "zh": "建议安排维护"},
+    "rec.monitoring": {"en": "Increase monitoring frequency", "zh": "增加监测频次"},
+    "rec.review": {"en": "Review recommended", "zh": "建议审查"},
 }
 
 

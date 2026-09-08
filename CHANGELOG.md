@@ -27,15 +27,19 @@ predictive-maintenance server.
   collision-free timestamped file names, plus `list_reports`.  Reports
   are written to `~/.mcsa_reports/` (configurable via the
   `MCSA_REPORTS_DIR` environment variable).
-- **Three new MCP tools** (server now registers 24):
+- **Four new MCP tools** (server now registers 25):
   `generate_diagnostic_report`, `generate_spectrum_report`,
   `generate_envelope_report` — each accepts a `language` parameter
-  (`"en"`/`"zh"`).
+  (`"en"`/`"zh"`) — plus `generate_docx_report` for bilingual Word
+  (DOCX) report output.
 - **`scripts/generate_all_reports.py`** — batch generator producing a
   full demo suite (5 fault scenarios × spectrum/envelope/diagnostic ×
   both languages).
 - **`mcsa://fault-signatures/zh`** resource — Chinese version of the
   fault-signature knowledge base.
+- **`report_docx`** module — DOCX (Word) report generation with
+  severity-colored headings, sideband tables, motor parameters, overall
+  assessment, and recommendations.  Requires `python-docx` (bundled).
 
 ### Fixed
 

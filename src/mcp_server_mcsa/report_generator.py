@@ -19,6 +19,7 @@ from mcp_server_mcsa.html_templates import (
     create_spectrum_report,
 )
 from mcp_server_mcsa.i18n import Language, get_text
+from mcp_server_mcsa.report_docx import generate_docx_report as _generate_docx_report
 
 logger = logging.getLogger(__name__)
 
@@ -194,11 +195,61 @@ def save_envelope_report(
     }
 
 
+def save_docx_report(
+    report_data: dict[str, Any],
+    label: str = "signal",
+    metadata: dict[str, Any] | None = None,
+    language: Language = "en",
+    directory: Path | None = None,
+) -> dict[str, Any]:
+    """Render and save a bilingual MCSA diagnostic DOCX report.
+
+    Args:
+        report_data: Diagnostic dict from ``run_full_diagnosis`` /
+            ``diagnose_from_file``.
+        label: Short label embedded in the filename.
+        metadata: Extra provenance metadata stored in the report.
+        language: Report language ("en" or "zh").
+        directory: Output directory (defaults to REPORTS_DIR).
+
+    Returns:
+        Dict with file path, name, size, report type, and a message.
+    """
+    out_dir = Path(directory) if directory is not None else REPORTS_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    meta = dict(metadata or {})
+    meta.setdefault("report_type", "mcsa_docx")
+    meta.setdefault("generated_utc", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    meta.setdefault("language", language)
+    if "signal_id" in report_data:
+        meta.setdefault("signal_id", report_data["signal_id"])
+
+    docx_bytes, error = _generate_docx_report(report_data, lang=language)
+    if docx_bytes is None:
+        return {"error": error}
+
+    output_file = out_dir / timestamped_report_name(label, ext="docx")
+    output_file.write_bytes(docx_bytes)
+
+    logger.info("DOCX report saved: %s", output_file.name)
+
+    return {
+        "file_path": str(output_file.absolute()),
+        "file_name": output_file.name,
+        "file_size_kb": round(output_file.stat().st_size / 1024, 2),
+        "report_type": "mcsa_docx",
+        "language": language,
+        "metadata": meta,
+        "message": f"{get_text('report.docx_saved', language)}: {output_file.name} ({output_file.stat().st_size / 1024:.2f} KB)",
+    }
+
+
 def list_reports(directory: Path | None = None) -> list[dict[str, Any]]:
-    """List saved HTML reports, newest first."""
+    """List saved reports (HTML and DOCX), newest first."""
     out_dir = Path(directory) if directory is not None else REPORTS_DIR
     reports = []
-    for f in sorted(out_dir.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True):
+    for f in sorted(out_dir.glob("mcsa_diagnostic_*"), key=lambda p: p.stat().st_mtime, reverse=True):
         reports.append({
             "file_name": f.name,
             "file_path": str(f.absolute()),

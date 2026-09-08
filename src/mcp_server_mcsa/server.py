@@ -1314,6 +1314,71 @@ def generate_envelope_report(
 
 
 # ===================================================================
+# TOOL 23: Generate DOCX Diagnostic Report
+# ===================================================================
+
+@mcp.tool()
+def generate_docx_report(
+    signal_id: Annotated[str | None, Field(description="ID of a stored signal (from generate_test_current_signal or load_signal_from_file). Preferred over raw array.", default=None)] = None,
+    signal: Annotated[list[float] | None, Field(description="Raw time-domain current signal. Use signal_id instead for large signals.", default=None)] = None,
+    sampling_freq_hz: Annotated[float | None, Field(description="Sampling frequency in Hz. Auto-resolved when using signal_id.", default=None)] = None,
+    supply_freq_hz: Annotated[float, Field(description="Supply frequency in Hz")] = 50.0,
+    poles: Annotated[int, Field(description="Number of poles")] = 4,
+    rotor_speed_rpm: Annotated[float, Field(description="Rotor speed in RPM")] = 1470.0,
+    bearing_defect_freq_hz: Annotated[float | None, Field(description="Bearing defect frequency in Hz (optional, for bearing analysis)", default=None)] = None,
+    tolerance_hz: Annotated[float, Field(description="Frequency search tolerance in Hz", default=0.5)] = 0.5,
+    language: Annotated[Literal["en", "zh"], Field(description="Report language ('en' or 'zh')", default="en")] = "en",
+) -> str:
+    """Run the full MCSA pipeline and save a bilingual Word (DOCX) report.
+
+    Performs the complete diagnostic analysis (same pipeline as
+    run_full_diagnosis) and writes a standalone Word document report
+    to the reports directory (~/.mcsa_reports/ by default,
+    configurable via MCSA_REPORTS_DIR).  Returns the saved file path
+    and metadata.
+    """
+    from mcp_server_mcsa.report_generator import (
+        REPORTS_DIR,
+        save_docx_report,
+    )
+
+    x, fs = _get_signal(signal_id, signal, sampling_freq_hz)
+
+    report = _run_diagnosis_pipeline(
+        x, fs,
+        supply_freq_hz=supply_freq_hz,
+        poles=poles,
+        rotor_speed_rpm=rotor_speed_rpm,
+        bearing_defect_freq_hz=bearing_defect_freq_hz,
+        tolerance_hz=tolerance_hz,
+        language=language,
+        signal_id=signal_id,
+        include_spectrum=False,
+    )
+
+    label = signal_id or "signal"
+    metadata = {
+        "supply_freq_hz": supply_freq_hz,
+        "poles": poles,
+        "rotor_speed_rpm": rotor_speed_rpm,
+        "tolerance_hz": tolerance_hz,
+        "bearing_defect_freq_hz": bearing_defect_freq_hz,
+        "reports_directory": str(REPORTS_DIR),
+    }
+    try:
+        saved = save_docx_report(
+            report, label=label, metadata=metadata, language=language
+        )
+    except Exception as exc:  # pragma: no cover - filesystem errors
+        return json.dumps({
+            "error": f"Failed to save DOCX report: {exc}",
+            "reports_directory": str(REPORTS_DIR),
+        })
+
+    return json.dumps(saved, indent=2, default=str)
+
+
+# ===================================================================
 # TOOL 19: Diagnose from File (one-shot)
 # ===================================================================
 

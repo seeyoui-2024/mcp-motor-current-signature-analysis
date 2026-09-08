@@ -419,6 +419,30 @@ envelope report.
 
 ---
 
+#### `generate_docx_report`
+
+Runs the full MCSA pipeline and saves a **bilingual Word (DOCX) report**
+to the reports directory.  Requires the `python-docx` package (bundled
+as a project dependency).  The Word document includes motor parameters,
+signal info, fault analysis with severity-colored headings, sideband
+tables, envelope statistics, overall assessment, and actionable
+recommendations — all in the selected language.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `signal_id` / `signal` / `sampling_freq_hz` | — | — | As in `generate_diagnostic_report` |
+| `supply_freq_hz` | `float` | `50.0` | Supply frequency (Hz) |
+| `poles` | `int` | `4` | Number of poles |
+| `rotor_speed_rpm` | `float` | `1470.0` | Rotor speed (RPM) |
+| `bearing_defect_freq_hz` | `float \| null` | `null` | Enables bearing analysis |
+| `tolerance_hz` | `float` | `0.5` | Frequency search tolerance |
+| `language` | `"en" \| "zh"` | `"en"` | Report language |
+
+**Returns** — JSON with the DOCX file path, `file_name`,
+`report_type` (`mcsa_docx`), `file_size_kb`, and `metadata`.
+
+---
+
 ### One-Shot Diagnostic Pipelines
 
 #### `run_full_diagnosis`
